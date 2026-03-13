@@ -103,53 +103,6 @@ class Button:
         return False
 
 
-class Button:
-    """按钮类"""
-
-    def __init__(self, x: int, y: int, width: int, height: int,
-                 text: str, callback: Callable, font_size: int = FONT_SIZE_NORMAL):
-        self.rect = pygame.Rect(x, y, width, height)
-        self.text = text
-        self.callback = callback
-        self.font_size = font_size
-        self.hovered = False
-        self.active = True
-
-    def draw(self, screen: pygame.Surface, font: pygame.font.Font) -> None:
-        """绘制按钮"""
-        if not self.active:
-            color = COLORS['gray']
-        elif self.hovered:
-            color = COLORS['button_hover']
-        else:
-            color = COLORS['button']
-
-        # 绘制按钮背景
-        pygame.draw.rect(screen, color, self.rect, border_radius=8)
-        pygame.draw.rect(screen, COLORS['black'], self.rect, 2, border_radius=8)
-
-        # 绘制文字
-        text_color = COLORS['white'] if self.active else COLORS['dark_gray']
-        text_surface = font.render(self.text, True, text_color)
-        text_rect = text_surface.get_rect(center=self.rect.center)
-        screen.blit(text_surface, text_rect)
-
-    def handle_event(self, event: pygame.event.Event) -> bool:
-        """处理事件，返回是否触发回调"""
-        if not self.active:
-            return False
-
-        if event.type == pygame.MOUSEMOTION:
-            self.hovered = self.rect.collidepoint(event.pos)
-
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.rect.collidepoint(event.pos):
-                self.callback()
-                return True
-
-        return False
-
-
 class Slider:
     """滑块组件（用于音量调节）"""
 

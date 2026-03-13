@@ -83,26 +83,6 @@ class DoudizhuAI:
         # 需要压过别人的牌
         return self._choose_response(game_state, last_play)
 
-    def make_decision(self, game_state: GameState) -> List[Card]:
-        """
-        做出出牌决策
-
-        Args:
-            game_state: 当前游戏状态
-
-        Returns:
-            要出的牌列表，空列表表示过牌
-        """
-        last_play = game_state.last_play
-        last_player_id = game_state.last_play_player_id
-
-        # 第一手或自己是上一手出牌者
-        if last_play is None or last_player_id == self.player.id:
-            return self._choose_first_play(game_state)
-
-        # 需要压过别人的牌
-        return self._choose_response(game_state, last_play)
-
     def make_bid(self, game_state: GameState, current_max_bid: int) -> int:
         """
         做出叫分决策
