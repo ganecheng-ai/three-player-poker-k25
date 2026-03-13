@@ -41,7 +41,7 @@ class DoudizhuAI:
         CardPattern.ROCKET: 11,
     }
 
-    def __init__(self, player: Player, difficulty: str = "normal"):
+    def __init__(self, player: Player, difficulty: AIDifficulty = AIDifficulty.NORMAL):
         """
         初始化AI
 
@@ -232,7 +232,7 @@ class DoudizhuAI:
             sorted_candidates = sorted(non_bomb_candidates, key=sort_key)
 
             # 根据难度选择
-            if self.difficulty == "hard":
+            if self.difficulty == AIDifficulty.HARD:
                 # 困难模式：更智能的选择
                 return self._smart_first_play(sorted_candidates, hand_analysis)
             else:
@@ -360,11 +360,11 @@ class DoudizhuAI:
         # 2. 如果是队友出的牌且牌不大，考虑过牌让队友继续出
         if is_teammate:
             # 根据难度决定是否压队友的牌
-            if self.difficulty == "easy":
+            if self.difficulty == AIDifficulty.EASY:
                 # 简单模式：经常放过
                 if random.random() < 0.7:
                     return []
-            elif self.difficulty == "normal":
+            elif self.difficulty == AIDifficulty.NORMAL:
                 # 普通模式：有时放过
                 if random.random() < 0.5 and last_play.main_value < 60:
                     return []
@@ -416,9 +416,9 @@ class DoudizhuAI:
 
         # 否则有一定概率使用炸弹（根据难度）
         bomb_probability = 0.3
-        if self.difficulty == "easy":
+        if self.difficulty == AIDifficulty.EASY:
             bomb_probability = 0.2
-        elif self.difficulty == "hard":
+        elif self.difficulty == AIDifficulty.HARD:
             bomb_probability = 0.5
 
         if random.random() < bomb_probability:

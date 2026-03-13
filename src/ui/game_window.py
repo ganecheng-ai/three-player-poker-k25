@@ -1111,10 +1111,6 @@ class GameWindow:
         pass  # 在_draw_played_cards中实时绘制
 
 
-def play_callback():
-    pass
-
-
 def main():
     """主函数"""
     try:
