@@ -136,6 +136,11 @@ three-player-poker-k25/
 
 ### 当前版本
 
+**v0.1.1** - 问题修复版本
+- 修复 GitHub Actions workflow 使用已弃用 action 的问题
+- 修复 PlayerType 枚举比较逻辑
+- 修复 AI 玩家 ID 获取逻辑
+
 **v0.1.0** - 基础版本
 - 基础项目结构和日志系统
 - 扑克牌核心逻辑
@@ -171,6 +176,12 @@ three-player-poker-k25/
 本项目采用 [MIT License](LICENSE) 开源许可证。
 
 ## 更新日志
+
+### v0.1.1 (2026-03-13)
+- 修复 GitHub Actions 使用已弃用 action 的问题
+- 修复 PlayerType 枚举比较逻辑错误
+- 修复 AI 玩家 ID 获取逻辑错误
+- 添加 assets 目录结构
 
 ### v0.1.0 (2026-03-13)
 - 初始版本发布
