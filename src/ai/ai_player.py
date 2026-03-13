@@ -6,7 +6,7 @@ AI玩家模块
 import random
 from typing import List, Optional, Tuple, Dict, Set
 from collections import Counter
-from enum import Enum
+from enum import IntEnum
 
 from ..game.card import Card, CardRank
 from ..game.player import Player
@@ -14,11 +14,11 @@ from ..game.rules import DoudizhuRules, PlayPattern, CardPattern
 from ..game.game_state import GameState
 
 
-class AIDifficulty(Enum):
+class AIDifficulty(IntEnum):
     """AI难度级别"""
-    EASY = "easy"
-    NORMAL = "normal"
-    HARD = "hard"
+    EASY = 0
+    NORMAL = 1
+    HARD = 2
 
 
 class DoudizhuAI:
