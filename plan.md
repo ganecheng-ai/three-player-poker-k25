@@ -41,6 +41,10 @@
 - [x] 优化UI美观度
 - [x] 完善文档和README
 
+### 第六阶段: 问题修复和文档优化 (v1.0.1) - 已完成
+- [x] 修复 AIDifficulty 枚举类型错误
+- [x] 优化 README 文档结构
+
 ## 目录结构
 ```
 three-player-poker-k25/
