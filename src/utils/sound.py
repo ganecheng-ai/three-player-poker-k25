@@ -5,12 +5,136 @@
 
 import pygame
 import os
+import math
 from typing import Optional, Dict
 from pathlib import Path
 
 from ..utils import get_logger
 
 logger = get_logger()
+
+
+def generate_wave(frequency: float, duration: float, volume: float = 0.5,
+                  sample_rate: int = 44100) -> bytes:
+    """
+    生成正弦波音效数据
+
+    Args:
+        frequency: 频率(Hz)
+        duration: 持续时间(秒)
+        volume: 音量(0.0-1.0)
+        sample_rate: 采样率
+    """
+    num_samples = int(duration * sample_rate)
+    audio_bytes = bytearray()
+
+    for i in range(num_samples):
+        t = i / sample_rate
+        value = math.sin(2 * math.pi * frequency * t) * volume
+        sample = int(value * 32767)
+        audio_bytes.extend(sample.to_bytes(2, 'little', signed=True))
+        audio_bytes.extend(sample.to_bytes(2, 'little', signed=True))
+
+    return bytes(audio_bytes)
+
+
+def generate_complex_sound(notes: list, duration: float, volume: float = 0.5,
+                          sample_rate: int = 44100) -> bytes:
+    """生成复杂音效（多音符）"""
+    num_samples = int(duration * sample_rate)
+    audio_bytes = bytearray()
+    note_duration = duration / len(notes) if notes else duration
+
+    for i in range(num_samples):
+        t = i / sample_rate
+        note_index = int(t / note_duration) if note_duration > 0 else 0
+        if note_index >= len(notes):
+            note_index = len(notes) - 1
+
+        freq = notes[note_index] if note_index < len(notes) else notes[-1]
+        value = math.sin(2 * math.pi * freq * t) * volume
+        sample = int(value * 32767)
+        audio_bytes.extend(sample.to_bytes(2, 'little', signed=True))
+        audio_bytes.extend(sample.to_bytes(2, 'little', signed=True))
+
+    return bytes(audio_bytes)
+
+
+def generate_sweep(start_freq: float, end_freq: float, duration: float,
+                   volume: float = 0.5, sample_rate: int = 44100) -> bytes:
+    """生成频率扫描音效"""
+    num_samples = int(duration * sample_rate)
+    audio_bytes = bytearray()
+
+    for i in range(num_samples):
+        t = i / sample_rate
+        freq = start_freq + (end_freq - start_freq) * (t / duration)
+        value = math.sin(2 * math.pi * max(freq, 20) * t) * volume
+        sample = int(value * 32767)
+        audio_bytes.extend(sample.to_bytes(2, 'little', signed=True))
+        audio_bytes.extend(sample.to_bytes(2, 'little', signed=True))
+
+    return bytes(audio_bytes)
+
+
+def generate_sound_by_type(sound_type: str) -> Optional[pygame.mixer.Sound]:
+    """根据类型生成音效"""
+    try:
+        if sound_type == 'deal':
+            data = generate_wave(800, 0.1, 0.3)
+        elif sound_type == 'play':
+            data = generate_wave(1200, 0.15, 0.5)
+        elif sound_type == 'pass':
+            data = generate_wave(400, 0.2, 0.4)
+        elif sound_type == 'win':
+            notes = [523.25, 659.25, 783.99, 1046.50]  # C5, E5, G5, C6
+            data = generate_complex_sound(notes, 1.0, 0.4)
+        elif sound_type == 'lose':
+            data = generate_sweep(400, 200, 0.8, 0.4)
+        elif sound_type == 'bomb':
+            # 爆炸音效 - 快速下降频率 + 噪声
+            num_samples = int(0.6 * 44100)
+            audio_bytes = bytearray()
+            for i in range(num_samples):
+                t = i / 44100
+                if t < 0.1:
+                    freq = 200 - t * 1000
+                else:
+                    freq = 100 * (1 - (t - 0.1) / 0.5)
+                value = math.sin(2 * math.pi * max(freq, 20) * t) * 0.6
+                # 添加噪声
+                value += ((hash(i) % 100) - 50) / 2000 * (1 - t / 0.6)
+                sample = int(value * 32767)
+                audio_bytes.extend(sample.to_bytes(2, 'little', signed=True))
+                audio_bytes.extend(sample.to_bytes(2, 'little', signed=True))
+            data = bytes(audio_bytes)
+        elif sound_type == 'rocket':
+            data = generate_sweep(400, 1400, 1.0, 0.5)
+        elif sound_type == 'bid':
+            data = generate_wave(1000, 0.1, 0.4)
+        elif sound_type == 'click':
+            data = generate_wave(1500, 0.05, 0.3)
+        elif sound_type == 'select':
+            data = generate_wave(600, 0.08, 0.3)
+        elif sound_type == 'error':
+            # 错误音效 - 颤音
+            num_samples = int(0.3 * 44100)
+            audio_bytes = bytearray()
+            for i in range(num_samples):
+                t = i / 44100
+                value = math.sin(2 * math.pi * 150 * t) * 0.4
+                value *= 0.5 + 0.5 * math.sin(20 * math.pi * t)
+                sample = int(value * 32767)
+                audio_bytes.extend(sample.to_bytes(2, 'little', signed=True))
+                audio_bytes.extend(sample.to_bytes(2, 'little', signed=True))
+            data = bytes(audio_bytes)
+        else:
+            return None
+
+        return pygame.mixer.Sound(buffer=data)
+    except Exception as e:
+        logger.warning(f"生成音效 {sound_type} 失败: {e}")
+        return None
 
 
 class SoundManager:
@@ -70,7 +194,7 @@ class SoundManager:
             self.music_enabled = False
 
     def _load_sounds(self) -> None:
-        """加载所有音效文件"""
+        """加载所有音效文件，文件不存在时动态生成"""
         for sound_name, filename in self.SOUND_FILES.items():
             sound_path = self.assets_dir / filename
             try:
@@ -79,12 +203,22 @@ class SoundManager:
                     self.sounds[sound_name].set_volume(self.volume)
                     logger.debug(f"加载音效: {sound_name}")
                 else:
-                    # 音效文件不存在，使用占位符
-                    self.sounds[sound_name] = None
-                    logger.debug(f"音效文件不存在: {sound_path}")
+                    # 音效文件不存在，动态生成
+                    logger.debug(f"音效文件不存在，动态生成: {sound_name}")
+                    generated_sound = generate_sound_by_type(sound_name)
+                    if generated_sound:
+                        generated_sound.set_volume(self.volume)
+                        self.sounds[sound_name] = generated_sound
+                    else:
+                        self.sounds[sound_name] = None
             except Exception as e:
-                logger.warning(f"加载音效失败 {sound_name}: {e}")
-                self.sounds[sound_name] = None
+                logger.warning(f"加载音效失败 {sound_name}: {e}，尝试动态生成")
+                generated_sound = generate_sound_by_type(sound_name)
+                if generated_sound:
+                    generated_sound.set_volume(self.volume)
+                    self.sounds[sound_name] = generated_sound
+                else:
+                    self.sounds[sound_name] = None
 
     def play(self, sound_name: str) -> None:
         """

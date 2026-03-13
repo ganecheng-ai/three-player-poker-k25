@@ -6,14 +6,14 @@
 import pygame
 import sys
 import os
-from typing import List, Optional, Tuple, Callable
+from typing import List, Optional, Tuple, Callable, Dict
 from pathlib import Path
 
 from ..game.card import Card, CardSuit, SUIT_COLOR, RANK_DISPLAY, SUIT_DISPLAY
 from ..game.player import Player, PlayerRole, PlayerType
 from ..game.game_state import GameState, GamePhase, GameResult
 from ..game.rules import CardPattern
-from ..ai.ai_player import DoudizhuAI
+from ..ai.ai_player import DoudizhuAI, AIDifficulty
 from ..utils import setup_logger, get_sound_manager
 from .animation import AnimationManager
 
@@ -98,6 +98,195 @@ class Button:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.rect.collidepoint(event.pos):
                 self.callback()
+                return True
+
+        return False
+
+
+class Button:
+    """按钮类"""
+
+    def __init__(self, x: int, y: int, width: int, height: int,
+                 text: str, callback: Callable, font_size: int = FONT_SIZE_NORMAL):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.text = text
+        self.callback = callback
+        self.font_size = font_size
+        self.hovered = False
+        self.active = True
+
+    def draw(self, screen: pygame.Surface, font: pygame.font.Font) -> None:
+        """绘制按钮"""
+        if not self.active:
+            color = COLORS['gray']
+        elif self.hovered:
+            color = COLORS['button_hover']
+        else:
+            color = COLORS['button']
+
+        # 绘制按钮背景
+        pygame.draw.rect(screen, color, self.rect, border_radius=8)
+        pygame.draw.rect(screen, COLORS['black'], self.rect, 2, border_radius=8)
+
+        # 绘制文字
+        text_color = COLORS['white'] if self.active else COLORS['dark_gray']
+        text_surface = font.render(self.text, True, text_color)
+        text_rect = text_surface.get_rect(center=self.rect.center)
+        screen.blit(text_surface, text_rect)
+
+    def handle_event(self, event: pygame.event.Event) -> bool:
+        """处理事件，返回是否触发回调"""
+        if not self.active:
+            return False
+
+        if event.type == pygame.MOUSEMOTION:
+            self.hovered = self.rect.collidepoint(event.pos)
+
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.rect.collidepoint(event.pos):
+                self.callback()
+                return True
+
+        return False
+
+
+class Slider:
+    """滑块组件（用于音量调节）"""
+
+    def __init__(self, x: int, y: int, width: int, height: int,
+                 min_value: float = 0.0, max_value: float = 1.0,
+                 initial_value: float = 0.5, callback: Optional[Callable] = None):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.min_value = min_value
+        self.max_value = max_value
+        self.value = initial_value
+        self.callback = callback
+        self.dragging = False
+        self.track_height = 8
+        self.handle_radius = 12
+
+    def draw(self, screen: pygame.Surface, font: pygame.font.Font) -> None:
+        """绘制滑块"""
+        center_y = self.rect.centery
+
+        # 绘制轨道背景
+        track_rect = pygame.Rect(
+            self.rect.x, center_y - self.track_height // 2,
+            self.rect.width, self.track_height
+        )
+        pygame.draw.rect(screen, COLORS['dark_gray'], track_rect, border_radius=4)
+
+        # 绘制已填充部分
+        fill_width = int(self.rect.width * self.value)
+        fill_rect = pygame.Rect(
+            self.rect.x, center_y - self.track_height // 2,
+            fill_width, self.track_height
+        )
+        pygame.draw.rect(screen, COLORS['button'], fill_rect, border_radius=4)
+
+        # 绘制滑块手柄
+        handle_x = self.rect.x + fill_width
+        pygame.draw.circle(screen, COLORS['white'], (handle_x, center_y), self.handle_radius)
+        pygame.draw.circle(screen, COLORS['button'], (handle_x, center_y), self.handle_radius - 2, 2)
+
+        # 显示当前值
+        value_text = f"{int(self.value * 100)}%"
+        value_surface = font.render(value_text, True, COLORS['white'])
+        value_rect = value_surface.get_rect(left=self.rect.right + 10, centery=center_y)
+        screen.blit(value_surface, value_rect)
+
+    def handle_event(self, event: pygame.event.Event) -> bool:
+        """处理事件"""
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.rect.collidepoint(event.pos):
+                self.dragging = True
+                self._update_value(event.pos[0])
+                return True
+
+        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            self.dragging = False
+
+        elif event.type == pygame.MOUSEMOTION:
+            if self.dragging:
+                self._update_value(event.pos[0])
+                return True
+
+        return False
+
+    def _update_value(self, mouse_x: int) -> None:
+        """根据鼠标位置更新值"""
+        relative_x = mouse_x - self.rect.x
+        new_value = relative_x / self.rect.width
+        self.value = max(self.min_value, min(self.max_value, new_value))
+        if self.callback:
+            self.callback(self.value)
+
+
+class Selector:
+    """选择器组件（用于难度选择等）"""
+
+    def __init__(self, x: int, y: int, width: int, height: int,
+                 options: List[str], initial_index: int = 0,
+                 callback: Optional[Callable] = None):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.options = options
+        self.selected_index = initial_index
+        self.callback = callback
+        self.button_width = 40
+        self.text_area = pygame.Rect(
+            x + self.button_width, y,
+            width - self.button_width * 2, height
+        )
+
+    def draw(self, screen: pygame.Surface, font: pygame.font.Font) -> None:
+        """绘制选择器"""
+        # 左按钮
+        left_btn = pygame.Rect(self.rect.x, self.rect.y, self.button_width, self.rect.height)
+        pygame.draw.rect(screen, COLORS['button'], left_btn, border_radius=4)
+        pygame.draw.rect(screen, COLORS['black'], left_btn, 2, border_radius=4)
+        left_text = font.render("<", True, COLORS['white'])
+        left_rect = left_text.get_rect(center=left_btn.center)
+        screen.blit(left_text, left_rect)
+
+        # 右按钮
+        right_btn = pygame.Rect(
+            self.rect.right - self.button_width, self.rect.y,
+            self.button_width, self.rect.height
+        )
+        pygame.draw.rect(screen, COLORS['button'], right_btn, border_radius=4)
+        pygame.draw.rect(screen, COLORS['black'], right_btn, 2, border_radius=4)
+        right_text = font.render(">", True, COLORS['white'])
+        right_rect = right_text.get_rect(center=right_btn.center)
+        screen.blit(right_text, right_rect)
+
+        # 文本区域
+        pygame.draw.rect(screen, COLORS['dark_gray'], self.text_area)
+        pygame.draw.rect(screen, COLORS['black'], self.text_area, 2)
+        current_text = self.options[self.selected_index]
+        text_surface = font.render(current_text, True, COLORS['white'])
+        text_rect = text_surface.get_rect(center=self.text_area.center)
+        screen.blit(text_surface, text_rect)
+
+    def handle_event(self, event: pygame.event.Event) -> bool:
+        """处理事件"""
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            # 左按钮
+            left_btn = pygame.Rect(self.rect.x, self.rect.y, self.button_width, self.rect.height)
+            if left_btn.collidepoint(event.pos):
+                self.selected_index = (self.selected_index - 1) % len(self.options)
+                if self.callback:
+                    self.callback(self.selected_index)
+                return True
+
+            # 右按钮
+            right_btn = pygame.Rect(
+                self.rect.right - self.button_width, self.rect.y,
+                self.button_width, self.rect.height
+            )
+            if right_btn.collidepoint(event.pos):
+                self.selected_index = (self.selected_index + 1) % len(self.options)
+                if self.callback:
+                    self.callback(self.selected_index)
                 return True
 
         return False
@@ -212,7 +401,16 @@ class GameWindow:
         self._init_fonts()
 
         # 游戏阶段
-        self.current_scene = "menu"  # menu, game, bidding, result
+        self.current_scene = "menu"  # menu, game, bidding, result, settings
+
+        # 设置选项
+        self.ai_difficulty = AIDifficulty.NORMAL
+        self.sound_volume = 0.5
+        self.music_volume = 0.3
+
+        # UI组件
+        self.sliders: List[Slider] = []
+        self.selectors: List[Selector] = []
 
         # 音效管理器
         self.sound_manager = get_sound_manager()
@@ -285,7 +483,9 @@ class GameWindow:
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    if self.current_scene == "game":
+                    if self.current_scene == "settings":
+                        self.current_scene = "menu"
+                    elif self.current_scene == "game":
                         self.current_scene = "menu"
                     elif self.current_scene == "menu":
                         self.running = False
@@ -294,12 +494,22 @@ class GameWindow:
             # 场景特定事件处理
             if self.current_scene == "menu":
                 self._handle_menu_events(event)
+            elif self.current_scene == "settings":
+                self._handle_settings_events(event)
             elif self.current_scene in ("game", "bidding"):
                 self._handle_game_events(event)
 
             # 按钮事件
             for button in self.buttons:
                 button.handle_event(event)
+
+            # 滑块事件
+            for slider in self.sliders:
+                slider.handle_event(event)
+
+            # 选择器事件
+            for selector in self.selectors:
+                selector.handle_event(event)
 
     def _handle_menu_events(self, event: pygame.event.Event) -> None:
         """处理菜单事件"""
@@ -392,6 +602,8 @@ class GameWindow:
 
         if self.current_scene == "menu":
             self._draw_menu()
+        elif self.current_scene == "settings":
+            self._draw_settings()
         elif self.current_scene == "game":
             self._draw_game()
         elif self.current_scene == "bidding":
@@ -402,6 +614,14 @@ class GameWindow:
         # 绘制按钮
         for button in self.buttons:
             button.draw(self.screen, self.font)
+
+        # 绘制滑块
+        for slider in self.sliders:
+            slider.draw(self.screen, self.font)
+
+        # 绘制选择器
+        for selector in self.selectors:
+            selector.draw(self.screen, self.font)
 
         # 绘制动画
         self.anim_manager.draw(self.screen, self.font, self.suit_font)
@@ -424,13 +644,19 @@ class GameWindow:
         self.buttons = []
 
         start_btn = Button(
-            WINDOW_WIDTH // 2 - 100, 400, 200, 50,
+            WINDOW_WIDTH // 2 - 100, 380, 200, 50,
             "开始游戏", self._start_new_game
         )
         self.buttons.append(start_btn)
 
+        settings_btn = Button(
+            WINDOW_WIDTH // 2 - 100, 450, 200, 50,
+            "游戏设置", self._open_settings
+        )
+        self.buttons.append(settings_btn)
+
         exit_btn = Button(
-            WINDOW_WIDTH // 2 - 100, 480, 200, 50,
+            WINDOW_WIDTH // 2 - 100, 520, 200, 50,
             "退出游戏", lambda: setattr(self, 'running', False)
         )
         self.buttons.append(exit_btn)
@@ -737,6 +963,117 @@ class GameWindow:
         for button in self.buttons:
             button.draw(self.screen, self.font)
 
+    def _handle_settings_events(self, event: pygame.event.Event) -> None:
+        """处理设置界面事件"""
+        pass
+
+    def _open_settings(self) -> None:
+        """打开设置界面"""
+        self.sound_manager.play_click()
+        self.current_scene = "settings"
+
+        # 初始化设置UI组件
+        self._init_settings_ui()
+
+    def _init_settings_ui(self) -> None:
+        """初始化设置界面UI"""
+        self.buttons = []
+        self.sliders = []
+        self.selectors = []
+
+        center_x = WINDOW_WIDTH // 2
+        start_y = 250
+
+        # 音效音量滑块
+        def on_sound_volume_change(value):
+            self.sound_volume = value
+            self.sound_manager.set_volume(value)
+
+        sound_slider = Slider(
+            center_x - 150, start_y, 300, 40,
+            min_value=0.0, max_value=1.0,
+            initial_value=self.sound_volume,
+            callback=on_sound_volume_change
+        )
+        self.sliders.append(sound_slider)
+
+        # 音乐音量滑块
+        def on_music_volume_change(value):
+            self.music_volume = value
+            self.sound_manager.set_music_volume(value)
+
+        music_slider = Slider(
+            center_x - 150, start_y + 70, 300, 40,
+            min_value=0.0, max_value=1.0,
+            initial_value=self.music_volume,
+            callback=on_music_volume_change
+        )
+        self.sliders.append(music_slider)
+
+        # AI难度选择器
+        difficulty_options = ["简单", "普通", "困难"]
+        initial_difficulty = self.ai_difficulty.value
+
+        def on_difficulty_change(index):
+            self.ai_difficulty = AIDifficulty(index)
+
+        difficulty_selector = Selector(
+            center_x - 150, start_y + 140, 300, 40,
+            options=difficulty_options,
+            initial_index=initial_difficulty,
+            callback=on_difficulty_change
+        )
+        self.selectors.append(difficulty_selector)
+
+        # 返回按钮
+        back_btn = Button(
+            center_x - 100, start_y + 220, 200, 50,
+            "返回主菜单", lambda: setattr(self, 'current_scene', 'menu')
+        )
+        self.buttons.append(back_btn)
+
+    def _draw_settings(self) -> None:
+        """绘制设置界面"""
+        # 标题
+        title = self.font_title.render("游 戏 设 置", True, COLORS['gold'])
+        title_rect = title.get_rect(center=(WINDOW_WIDTH // 2, 150))
+        self.screen.blit(title, title_rect)
+
+        # 绘制标签
+        center_x = WINDOW_WIDTH // 2
+        start_y = 250
+
+        # 音效音量标签
+        sound_label = self.font.render("音效音量", True, COLORS['white'])
+        sound_label_rect = sound_label.get_rect(
+            center=(center_x, start_y - 25)
+        )
+        self.screen.blit(sound_label, sound_label_rect)
+
+        # 音乐音量标签
+        music_label = self.font.render("音乐音量", True, COLORS['white'])
+        music_label_rect = music_label.get_rect(
+            center=(center_x, start_y + 45)
+        )
+        self.screen.blit(music_label, music_label_rect)
+
+        # AI难度标签
+        difficulty_label = self.font.render("AI难度", True, COLORS['white'])
+        difficulty_label_rect = difficulty_label.get_rect(
+            center=(center_x, start_y + 115)
+        )
+        self.screen.blit(difficulty_label, difficulty_label_rect)
+
+        # 绘制UI组件（按钮、滑块、选择器）
+        for button in self.buttons:
+            button.draw(self.screen, self.font)
+
+        for slider in self.sliders:
+            slider.draw(self.screen, self.font)
+
+        for selector in self.selectors:
+            selector.draw(self.screen, self.font)
+
     def _start_new_game(self) -> None:
         """开始新游戏"""
         logger.info("开始新游戏")
@@ -749,7 +1086,7 @@ class GameWindow:
 
         # 创建AI
         for i in range(1, 3):
-            self.ai_players[i] = DoudizhuAI(self.game_state.players[i])
+            self.ai_players[i] = DoudizhuAI(self.game_state.players[i], difficulty=self.ai_difficulty)
 
         # 开始游戏
         self.game_state.start_new_game()
