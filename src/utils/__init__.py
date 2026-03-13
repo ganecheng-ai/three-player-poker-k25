@@ -77,3 +77,9 @@ def get_logger(name: str = "doudizhu") -> logging.Logger:
         日志记录器
     """
     return logging.getLogger(name)
+
+
+# 导入音效管理器
+from .sound import SoundManager, get_sound_manager, init_sound_manager
+
+__all__ = ['setup_logger', 'get_logger', 'SoundManager', 'get_sound_manager', 'init_sound_manager']

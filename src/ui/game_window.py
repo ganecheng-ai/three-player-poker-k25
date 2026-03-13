@@ -14,7 +14,8 @@ from ..game.player import Player, PlayerRole, PlayerType
 from ..game.game_state import GameState, GamePhase, GameResult
 from ..game.rules import CardPattern
 from ..ai.ai_player import DoudizhuAI
-from ..utils import setup_logger
+from ..utils import setup_logger, get_sound_manager
+from .animation import AnimationManager
 
 # 初始化日志
 logger = setup_logger()
@@ -213,6 +214,13 @@ class GameWindow:
         # 游戏阶段
         self.current_scene = "menu"  # menu, game, bidding, result
 
+        # 音效管理器
+        self.sound_manager = get_sound_manager()
+        self.sound_manager.play_music('background')
+
+        # 动画管理器
+        self.anim_manager = AnimationManager()
+
         # 动画
         self.animation_queue = []
         self.last_action_time = 0
@@ -313,11 +321,16 @@ class GameWindow:
                 for sprite in self.card_sprites[0]:
                     if sprite.rect.collidepoint(event.pos):
                         sprite.toggle_selection()
+                        # 播放选牌音效
+                        self.sound_manager.play_select()
                         logger.debug(f"选中/取消选中: {sprite.card}")
                         break
 
     def _update(self) -> None:
         """更新游戏状态"""
+        # 更新动画
+        self.anim_manager.update()
+
         if self.current_scene == "game" and self.game_state:
             self._update_game()
 
@@ -337,6 +350,9 @@ class GameWindow:
                 if ai:
                     bid = ai.make_bid(self.game_state, self.game_state.base_score)
                     self.game_state.bid(current_player.id, bid)
+                    # 播放音效
+                    if bid > 0:
+                        self.sound_manager.play_bid()
                     logger.info(f"AI {current_player.name} 叫分: {bid}")
                     self.last_action_time = current_time
 
@@ -350,6 +366,18 @@ class GameWindow:
                     cards = ai.make_decision(self.game_state)
                     success, msg = self.game_state.play_cards(current_player.id, cards)
                     if success:
+                        # 播放音效
+                        if cards:
+                            self.sound_manager.play_play()
+                            # 检查炸弹和火箭
+                            last_play = self.game_state.last_play
+                            if last_play:
+                                if last_play.pattern == CardPattern.BOMB:
+                                    self.sound_manager.play_bomb()
+                                elif last_play.pattern == CardPattern.ROCKET:
+                                    self.sound_manager.play_rocket()
+                        else:
+                            self.sound_manager.play_pass()
                         logger.info(f"AI {current_player.name} 出牌: {[str(c) for c in cards] if cards else '过'}")
                         self._update_played_cards()
                         self.last_action_time = current_time
@@ -374,6 +402,9 @@ class GameWindow:
         # 绘制按钮
         for button in self.buttons:
             button.draw(self.screen, self.font)
+
+        # 绘制动画
+        self.anim_manager.draw(self.screen, self.font, self.suit_font)
 
         pygame.display.flip()
 
@@ -560,6 +591,15 @@ class GameWindow:
             if selected:
                 success, msg = self.game_state.play_cards(0, selected)
                 if success:
+                    # 播放出牌音效
+                    self.sound_manager.play_play()
+                    # 检查炸弹和火箭
+                    last_play = self.game_state.last_play
+                    if last_play:
+                        if last_play.pattern == CardPattern.BOMB:
+                            self.sound_manager.play_bomb()
+                        elif last_play.pattern == CardPattern.ROCKET:
+                            self.sound_manager.play_rocket()
                     # 清除选中状态
                     for s in self.card_sprites[0]:
                         s.set_selected(False)
@@ -567,6 +607,7 @@ class GameWindow:
                     if self.game_state.is_game_over():
                         self._on_game_over()
                 else:
+                    self.sound_manager.play_error()
                     logger.warning(f"出牌失败: {msg}")
 
         play_btn = Button(WINDOW_WIDTH // 2 - 160, WINDOW_HEIGHT - 180, 100, 40,
@@ -577,6 +618,7 @@ class GameWindow:
         def pass_callback():
             success, msg = self.game_state.play_cards(0, [])
             if success:
+                self.sound_manager.play_pass()
                 for s in self.card_sprites[0]:
                     s.set_selected(False)
                 self._update_played_cards()
@@ -699,6 +741,9 @@ class GameWindow:
         """开始新游戏"""
         logger.info("开始新游戏")
 
+        # 播放点击音效
+        self.sound_manager.play_click()
+
         # 创建游戏状态
         self.game_state = GameState()
 
@@ -708,6 +753,9 @@ class GameWindow:
 
         # 开始游戏
         self.game_state.start_new_game()
+
+        # 播放发牌音效
+        self.sound_manager.play_deal()
 
         # 初始化卡牌精灵
         self.card_sprites = {}
@@ -725,11 +773,17 @@ class GameWindow:
         if not self.game_state:
             return
 
+        # 播放点击音效
+        self.sound_manager.play_click()
+
         current_id = self.game_state.current_player_id
         success = self.game_state.bid(current_id, score)
 
         if success:
             logger.info(f"玩家 {current_id} 叫分: {score}")
+            # 播放叫分音效
+            if score > 0:
+                self.sound_manager.play_bid()
 
             if self.game_state.phase == GamePhase.PLAYING:
                 self._on_bidding_complete()
@@ -747,6 +801,19 @@ class GameWindow:
     def _on_game_over(self) -> None:
         """游戏结束"""
         logger.info("游戏结束")
+
+        # 播放胜利或失败音效
+        if self.game_state.result == GameResult.LANDLORD_WIN:
+            if self.game_state.players[0].is_landlord():
+                self.sound_manager.play_win()
+            else:
+                self.sound_manager.play_lose()
+        else:  # FARMERS_WIN
+            if self.game_state.players[0].is_farmer():
+                self.sound_manager.play_win()
+            else:
+                self.sound_manager.play_lose()
+
         self.current_scene = "result"
 
     def _update_played_cards(self) -> None:
