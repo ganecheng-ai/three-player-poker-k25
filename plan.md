@@ -106,6 +106,15 @@ three-player-poker-k25/
 
 ## 更新日志
 
+### v0.1.3 (2026-03-13)
+- 修复 Windows 构建 artifact 路径问题
+- 修复 GitHub Release 权限问题
+- 完整实现跨平台构建和自动发布
+
+### v0.1.2 (2026-03-13)
+- 修复 assets 目录缺失导致的 PyInstaller 构建失败
+- 添加 FORCE_JAVASCRIPT_ACTIONS_TO_NODE24 环境变量
+
 ### v0.1.1 (2026-03-13)
 - 修复 GitHub Actions 使用已弃用 action 的问题
 - 修复 PlayerType 枚举比较逻辑错误
