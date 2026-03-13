@@ -188,10 +188,16 @@ class DoudizhuAI:
 
         # 策略选择
         # 1. 如果是队友出的牌，尽量过
-        last_player = game_state.players[last_play.cards[0].value % 3]
-        # 简化：随机选择是否过牌（如果是队友）
-        if random.random() < 0.3:
-            return []
+        last_player_id = game_state.last_play_player_id
+        if last_player_id is not None:
+            last_player = game_state.players[last_player_id]
+            # 简化：随机选择是否过牌（如果是队友）
+            if self.player.is_farmer() and last_player.is_farmer():
+                if random.random() < 0.5:
+                    return []
+            elif self.player.is_landlord() and last_player.is_landlord():
+                if random.random() < 0.5:
+                    return []
 
         # 2. 选择最小的能压过的牌
         sorted_candidates = sorted(

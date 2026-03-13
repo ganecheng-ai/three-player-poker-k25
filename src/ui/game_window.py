@@ -10,7 +10,7 @@ from typing import List, Optional, Tuple, Callable
 from pathlib import Path
 
 from ..game.card import Card, CardSuit, SUIT_COLOR, RANK_DISPLAY, SUIT_DISPLAY
-from ..game.player import Player, PlayerRole
+from ..game.player import Player, PlayerRole, PlayerType
 from ..game.game_state import GameState, GamePhase, GameResult
 from ..game.rules import CardPattern
 from ..ai.ai_player import DoudizhuAI
@@ -304,7 +304,7 @@ class GameWindow:
 
         # 只在玩家回合处理点击
         current_player = self.game_state.get_current_player()
-        if current_player.player_type.value != 0:  # AI玩家
+        if current_player.player_type != PlayerType.HUMAN:  # AI玩家
             return
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -332,7 +332,7 @@ class GameWindow:
         current_player = self.game_state.get_current_player()
 
         if self.game_state.phase == GamePhase.BIDDING:
-            if current_player.player_type.value != 0:  # AI
+            if current_player.player_type != PlayerType.HUMAN:  # AI
                 ai = self.ai_players.get(current_player.id)
                 if ai:
                     bid = ai.make_bid(self.game_state, self.game_state.base_score)
@@ -344,7 +344,7 @@ class GameWindow:
                         self._on_bidding_complete()
 
         elif self.game_state.phase == GamePhase.PLAYING:
-            if current_player.player_type.value != 0:  # AI
+            if current_player.player_type != PlayerType.HUMAN:  # AI
                 ai = self.ai_players.get(current_player.id)
                 if ai:
                     cards = ai.make_decision(self.game_state)

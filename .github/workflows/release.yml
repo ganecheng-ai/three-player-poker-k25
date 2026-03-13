@@ -147,68 +147,38 @@ jobs:
         VERSION=${GITHUB_REF#refs/tags/}
         echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        VERSION=${{ steps.get_release_info.outputs.version }}
+        cat > release_notes.md << EOF
+        ## 斗地主游戏 $VERSION
+
+        ### 下载
+        - Windows: \`doudizhu-windows-x64.exe\`
+        - Linux: \`doudizhu-linux-x64.tar.gz\`
+        - macOS: \`doudizhu-macos-x64.dmg\`
+
+        ### 安装说明
+        - **Windows**: 下载并运行 \`.exe\` 文件
+        - **Linux**: 解压 \`.tar.gz\` 文件后运行 \`./doudizhu\`
+        - **macOS**: 打开 \`.dmg\` 文件并将应用拖入应用程序文件夹
+
+        ### 校验
+        请使用 \`checksums.txt\` 验证文件完整性。
+        EOF
+
     - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v1
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ steps.get_release_info.outputs.version }}
+        name: Release ${{ steps.get_release_info.outputs.version }}
+        body_path: release_notes.md
         draft: false
         prerelease: false
-        body: |
-          ## 斗地主游戏 ${{ steps.get_release_info.outputs.version }}
-
-          ### 下载
-          - Windows: `doudizhu-windows-x64.exe`
-          - Linux: `doudizhu-linux-x64.tar.gz`
-          - macOS: `doudizhu-macos-x64.dmg`
-
-          ### 安装说明
-          - **Windows**: 下载并运行 `.exe` 文件
-          - **Linux**: 解压 `.tar.gz` 文件后运行 `./doudizhu`
-          - **macOS**: 打开 `.dmg` 文件并将应用拖入应用程序文件夹
-
-          ### 校验
-          请使用 `checksums.txt` 验证文件完整性。
-
-    - name: Upload Linux release asset
-      uses: actions/upload-release-asset@v1
+        files: |
+          artifacts/doudizhu-linux-x64/doudizhu-linux-x64.tar.gz
+          artifacts/doudizhu-windows-x64/doudizhu-windows-x64.exe
+          artifacts/doudizhu-macos-x64/doudizhu-macos-x64.dmg
+          artifacts/checksums/checksums.txt
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: artifacts/doudizhu-linux-x64/doudizhu-linux-x64.tar.gz
-        asset_name: doudizhu-linux-x64.tar.gz
-        asset_content_type: application/gzip
-
-    - name: Upload Windows release asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: artifacts/doudizhu-windows-x64/doudizhu-windows-x64.exe
-        asset_name: doudizhu-windows-x64.exe
-        asset_content_type: application/octet-stream
-
-    - name: Upload macOS release asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: artifacts/doudizhu-macos-x64/doudizhu-macos-x64.dmg
-        asset_name: doudizhu-macos-x64.dmg
-        asset_content_type: application/octet-stream
-
-    - name: Upload checksums
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: artifacts/checksums/checksums.txt
-        asset_name: checksums.txt
-        asset_content_type: text/plain
