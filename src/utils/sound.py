@@ -9,9 +9,15 @@ import math
 from typing import Optional, Dict
 from pathlib import Path
 
-from ..utils import get_logger
+# 延迟导入 logger 以避免循环导入
+_logger = None
 
-logger = get_logger()
+def _get_logger():
+    global _logger
+    if _logger is None:
+        import logging
+        _logger = logging.getLogger("doudizhu")
+    return _logger
 
 
 def generate_wave(frequency: float, duration: float, volume: float = 0.5,
@@ -133,7 +139,7 @@ def generate_sound_by_type(sound_type: str) -> Optional[pygame.mixer.Sound]:
 
         return pygame.mixer.Sound(buffer=data)
     except Exception as e:
-        logger.warning(f"生成音效 {sound_type} 失败: {e}")
+        _get_logger().warning(f"生成音效 {sound_type} 失败: {e}")
         return None
 
 
@@ -187,9 +193,9 @@ class SoundManager:
             # 加载所有音效
             self._load_sounds()
 
-            logger.info("音效系统初始化完成")
+            _get_logger().info("音效系统初始化完成")
         except Exception as e:
-            logger.warning(f"音效系统初始化失败: {e}")
+            _get_logger().warning(f"音效系统初始化失败: {e}")
             self.sound_enabled = False
             self.music_enabled = False
 
@@ -201,10 +207,10 @@ class SoundManager:
                 if sound_path.exists():
                     self.sounds[sound_name] = pygame.mixer.Sound(str(sound_path))
                     self.sounds[sound_name].set_volume(self.volume)
-                    logger.debug(f"加载音效: {sound_name}")
+                    _get_logger().debug(f"加载音效: {sound_name}")
                 else:
                     # 音效文件不存在，动态生成
-                    logger.debug(f"音效文件不存在，动态生成: {sound_name}")
+                    _get_logger().debug(f"音效文件不存在，动态生成: {sound_name}")
                     generated_sound = generate_sound_by_type(sound_name)
                     if generated_sound:
                         generated_sound.set_volume(self.volume)
@@ -212,7 +218,7 @@ class SoundManager:
                     else:
                         self.sounds[sound_name] = None
             except Exception as e:
-                logger.warning(f"加载音效失败 {sound_name}: {e}，尝试动态生成")
+                _get_logger().warning(f"加载音效失败 {sound_name}: {e}，尝试动态生成")
                 generated_sound = generate_sound_by_type(sound_name)
                 if generated_sound:
                     generated_sound.set_volume(self.volume)
@@ -235,7 +241,7 @@ class SoundManager:
             try:
                 sound.play()
             except Exception as e:
-                logger.debug(f"播放音效失败: {e}")
+                _get_logger().debug(f"播放音效失败: {e}")
 
     def play_deal(self) -> None:
         """播放发牌音效"""
@@ -335,9 +341,9 @@ class SoundManager:
                 pygame.mixer.music.load(str(music_path))
                 pygame.mixer.music.set_volume(self.music_volume)
                 pygame.mixer.music.play(-1)  # 循环播放
-                logger.info(f"播放背景音乐: {music_path}")
+                _get_logger().info(f"播放背景音乐: {music_path}")
             except Exception as e:
-                logger.warning(f"播放背景音乐失败: {e}")
+                _get_logger().warning(f"播放背景音乐失败: {e}")
 
     def stop_music(self) -> None:
         """停止背景音乐"""

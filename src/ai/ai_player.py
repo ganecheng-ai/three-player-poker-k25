@@ -437,11 +437,10 @@ class DoudizhuAI:
             (牌列表, 牌型)的列表
         """
         candidates = []
-        rules = DoudizhuRules()
 
         # 单张
         for card in hand:
-            pattern = rules.identify_pattern([card])
+            pattern = DoudizhuRules.identify_pattern([card])
             candidates.append(([card], pattern))
 
         # 对子、三张、炸弹
@@ -452,21 +451,21 @@ class DoudizhuAI:
         for rank, cards in rank_groups.items():
             # 对子
             if len(cards) >= 2:
-                pattern = rules.identify_pattern(cards[:2])
+                pattern = DoudizhuRules.identify_pattern(cards[:2])
                 candidates.append((cards[:2], pattern))
             # 三张
             if len(cards) >= 3:
-                pattern = rules.identify_pattern(cards[:3])
+                pattern = DoudizhuRules.identify_pattern(cards[:3])
                 candidates.append((cards[:3], pattern))
             # 炸弹
             if len(cards) == 4:
-                pattern = rules.identify_pattern(cards)
+                pattern = DoudizhuRules.identify_pattern(cards)
                 candidates.append((cards, pattern))
 
         # 火箭（双王）
         jokers = [c for c in hand if c.rank in (CardRank.JOKER_SMALL, CardRank.JOKER_BIG)]
         if len(jokers) == 2:
-            pattern = rules.identify_pattern(jokers)
+            pattern = DoudizhuRules.identify_pattern(jokers)
             candidates.append((jokers, pattern))
 
         # 顺子（简化版，只检测部分）
@@ -476,7 +475,7 @@ class DoudizhuAI:
                 seq = sorted_ranks[start:start + length]
                 if seq[-1] - seq[0] == length - 1 and all(r < 15 for r in seq):
                     cards = [rank_groups[r][0] for r in seq]
-                    pattern = rules.identify_pattern(cards)
+                    pattern = DoudizhuRules.identify_pattern(cards)
                     if pattern.pattern == CardPattern.STRAIGHT:
                         candidates.append((cards, pattern))
 
