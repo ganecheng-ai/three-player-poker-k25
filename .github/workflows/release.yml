@@ -178,7 +178,7 @@ jobs:
         EOF
 
     - name: Create Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         name: Release ${{ steps.get_release_info.outputs.version }}
         body_path: release_notes.md
