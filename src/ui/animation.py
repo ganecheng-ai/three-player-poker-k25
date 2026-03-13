@@ -3,6 +3,7 @@
 处理游戏中的各种动画效果
 """
 
+import random
 import pygame
 from typing import List, Tuple, Optional, Callable
 from dataclasses import dataclass
@@ -135,9 +136,9 @@ class AnimationManager:
         for _ in range(20):
             self.particles.append({
                 'pos': list(center_pos),
-                'vel': [pygame.random.randint(-10, 10), pygame.random.randint(-15, -5)],
-                'color': (255, pygame.random.randint(100, 200), 0),
-                'size': pygame.random.randint(5, 15),
+                'vel': [random.randint(-10, 10), random.randint(-15, -5)],
+                'color': (255, random.randint(100, 200), 0),
+                'size': random.randint(5, 15),
                 'life': 30
             })
         logger.debug(f"添加炸弹特效: {center_pos}")
@@ -152,9 +153,9 @@ class AnimationManager:
             y = int(start_pos[1] + (end_pos[1] - start_pos[1]) * t)
             self.particles.append({
                 'pos': [x, y],
-                'vel': [pygame.random.randint(-2, 2), pygame.random.randint(-5, -2)],
-                'color': (255, 255, pygame.random.randint(100, 200)),
-                'size': pygame.random.randint(8, 20),
+                'vel': [random.randint(-2, 2), random.randint(-5, -2)],
+                'color': (255, 255, random.randint(100, 200)),
+                'size': random.randint(8, 20),
                 'life': 40
             })
         logger.debug(f"添加火箭特效")
