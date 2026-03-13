@@ -106,6 +106,11 @@ three-player-poker-k25/
 
 ## 更新日志
 
+### v0.1.4 (2026-03-13)
+- 修复 PyInstaller 打包后模块导入问题 (main.py 路径处理)
+- 修复日志文件路径问题，支持打包后环境
+- 关闭 issue #1: v0.1.3启动报错
+
 ### v0.1.3 (2026-03-13)
 - 修复 Windows 构建 artifact 路径问题
 - 修复 GitHub Release 权限问题
